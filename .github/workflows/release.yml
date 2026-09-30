@@ -22,6 +22,13 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Check tag matches pyproject version
+        run: |
+          test "v$(python -c 'import tomllib;print(tomllib.load(open("pyproject.toml","rb"))["project"]["version"])')" = "$GITHUB_REF_NAME"
+
+      - name: Install ffmpeg (runtime dep; e2e test exercises the real binary)
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends ffmpeg
+
       - name: Install + test
         run: |
           python -m pip install --upgrade pip
@@ -46,11 +53,17 @@ jobs:
           /tmp/wheel-venv/bin/python -m open_video list-models
           /tmp/wheel-venv/bin/python -m open_video list-presets
 
+      - name: Extract release notes from CHANGELOG.md
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          awk -v h="## [$version]" '/^## \[/ { on = index($0, h) == 1; next } on' CHANGELOG.md > release-body.md
+          grep -q '[^[:space:]]' release-body.md || { echo "CHANGELOG.md has no section for $version"; exit 1; }
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
         with:
           generate_release_notes: true
-          body_path: CHANGELOG.md
+          body_path: release-body.md
           files: dist/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
