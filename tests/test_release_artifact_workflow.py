@@ -20,6 +20,9 @@ def test_release_wheel_smoke_runs_outside_checkout():
     text = WORKFLOW.read_text()
     assert "pip install dist/*.whl" in text
     assert "python -m open_video --help" in text
+    # --help exits before any packaged data is read; these need library/ and backends.
+    assert "python -m open_video list-models" in text
+    assert "python -m open_video list-presets" in text
     assert "cd /tmp" in text
     assert "assert 'site-packages' in open_video.__file__" in text
 

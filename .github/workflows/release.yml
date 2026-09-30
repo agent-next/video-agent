@@ -43,6 +43,8 @@ jobs:
           assert 'site-packages' in open_video.__file__, open_video.__file__
           "
           /tmp/wheel-venv/bin/python -m open_video --help
+          /tmp/wheel-venv/bin/python -m open_video list-models
+          /tmp/wheel-venv/bin/python -m open_video list-presets
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
