@@ -4,7 +4,7 @@ title: OpenVideo
 version: 0.1.0
 date-released: "2026-09-22"
 license: Apache-2.0
-repository-code: "https://github.com/open-video-ai/open-video"
+repository-code: "https://github.com/agent-next/video-agent"
 url: "https://open-video.ai"
 authors:
   - name: OpenVideo Contributors

@@ -64,8 +64,8 @@ Full detail: [`getting-started.md`](./getting-started.md) · [`QUICKSTART.md`](.
 ### Option A — Versioned install (recommended)
 
 ```bash
-git clone --depth 1 --branch v0.1.0 https://github.com/open-video-ai/open-video
-cd open-video
+git clone --depth 1 --branch v0.1.0 https://github.com/agent-next/video-agent
+cd video-agent
 bash scripts/install.sh
 ```
 
@@ -81,8 +81,8 @@ There are **no** shipping primary installers named `OpenVideo-Setup.exe`, `OpenV
 ### Option B — Clone + CLI
 
 ```bash
-git clone https://github.com/open-video-ai/open-video.git
-cd open-video
+git clone https://github.com/agent-next/video-agent.git
+cd video-agent
 # optional: bash scripts/install.sh
 python -m open_video list-models
 python -m open_video pull h3 --check-only
@@ -226,7 +226,7 @@ Easiest contributions (no coding required for some):
 There is **no** public Discord as a required community path. Prefer:
 
 - Site: [https://open-video.ai](https://open-video.ai)
-- GitHub Issues on `open-video-ai/open-video`
+- GitHub Issues on `agent-next/video-agent`
 
 See [`CONTRIBUTING.md`](../CONTRIBUTING.md) and [`docs/COMMUNITY.md`](./COMMUNITY.md).
 

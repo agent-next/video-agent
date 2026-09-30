@@ -1,6 +1,6 @@
 # Local GPU runtime (lab)
 
-Official product: this repo (`open-video-ai/open-video`).  
+Official product: this repo (`agent-next/video-agent`).  
 ComfyUI + MiniMax H3 weights are **not** in git. Keep them in a sibling **lab** directory (or any path you set via env).
 
 ## Recommended layout

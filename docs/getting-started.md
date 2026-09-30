@@ -42,8 +42,8 @@ backend. A Mac port (`minimax-h3-mlx`) exists in the community but is not wired 
 ## 2. Clone open-video
 
 ```bash
-git clone https://github.com/open-video-ai/open-video.git
-cd open-video
+git clone https://github.com/agent-next/video-agent.git
+cd video-agent
 ```
 
 The orchestrator is pure Python and has **no third-party pip dependencies** — `core/`, `cli/`,

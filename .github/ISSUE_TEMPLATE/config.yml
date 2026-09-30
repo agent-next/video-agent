@@ -7,5 +7,5 @@ contact_links:
     url: https://discord.gg/open-video
     about: Community help, showcase, and chat (verify invite is live before launch).
   - name: Security vulnerability
-    url: https://github.com/open-video-ai/open-video/security/advisories/new
+    url: https://github.com/agent-next/video-agent/security/advisories/new
     about: Please report security issues privately (see SECURITY.md).

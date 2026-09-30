@@ -28,8 +28,8 @@
 
 ```bash
 # v0.1.0 ships from the GitHub tag (Linux / macOS / WSL2)
-git clone --depth 1 --branch v0.1.0 https://github.com/open-video-ai/open-video
-cd open-video
+git clone --depth 1 --branch v0.1.0 https://github.com/agent-next/video-agent
+cd video-agent
 bash scripts/install.sh             # ComfyUI engine + H3 weights (resumable, ~54 GB)
 
 # Same mental model as Ollama: pull → status → run
@@ -66,7 +66,7 @@ fetches them — those tiers are manual experiments, not a shipped path.
 <summary><b>Prefer manual clone / pip?</b></summary>
 
 ```bash
-git clone --depth 1 --branch v0.1.0 https://github.com/open-video-ai/open-video && cd open-video
+git clone --depth 1 --branch v0.1.0 https://github.com/agent-next/video-agent && cd video-agent
 pip install -e .
 open-video pull h3
 open-video run "waves at sunset, golden hour" --duration 10 --model h3 --output out.mp4

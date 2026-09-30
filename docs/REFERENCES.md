@@ -68,7 +68,7 @@ follow [Quickstart](QUICKSTART.md); the website installer is updated separately.
 ## Repo / brand hygiene
 
 - **Site:** `https://open-video.ai`
-- **Code:** `open-video-ai/open-video`
+- **Code:** `agent-next/video-agent`
 - Names: **OpenVideo**, **open-video**, **open-video.ai**
 - Avoid bare `open-video.pages.dev` name collisions — use `open-video.ai`
 

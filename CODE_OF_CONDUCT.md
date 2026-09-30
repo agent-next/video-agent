@@ -11,7 +11,7 @@ We are committed to making participation in OpenVideo a harassment-free experien
 ## Enforcement
 Instances of abusive, harassing, or otherwise unacceptable behavior may be reported via a
 **private GitHub Security advisory or private contact to maintainers** on
-[open-video-ai/open-video](https://github.com/open-video-ai/open-video) (use Security for sensitive
+[agent-next/video-agent](https://github.com/agent-next/video-agent) (use Security for sensitive
 reports; use a private maintainer channel when available). Do not file public issues for
 harassment reports that would re-expose victims. All complaints will be reviewed and investigated
 promptly and fairly. Community leaders are obligated to respect the privacy and security of the

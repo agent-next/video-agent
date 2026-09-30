@@ -57,9 +57,9 @@ open-video = "open_video.__main__:main"
 
 [project.urls]
 Homepage = "https://open-video.ai"
-Repository = "https://github.com/open-video-ai/open-video"
-Documentation = "https://github.com/open-video-ai/open-video/tree/master/docs"
-Issues = "https://github.com/open-video-ai/open-video/issues"
+Repository = "https://github.com/agent-next/video-agent"
+Documentation = "https://github.com/agent-next/video-agent/tree/master/docs"
+Issues = "https://github.com/agent-next/video-agent/issues"
 HuggingFace = "https://huggingface.co/open-video-ai/open-video"
 
 # --- packaging layout --------------------------------------------------------

@@ -50,7 +50,7 @@ QUANT_FORCE=""
 KEEP_SERVER=0
 SAGE=0
 ASSUME_YES=0
-REPO_URL="${OPEN_VIDEO_REPO:-https://github.com/open-video-ai/open-video.git}"
+REPO_URL="${OPEN_VIDEO_REPO:-https://github.com/agent-next/video-agent.git}"
 # ComfyUI pin lives in scripts/comfyui.pin (single source; also used by
 # lab-restore.sh). Loaded after OV_ROOT is resolved; fallback values keep the
 # standalone curl|bash bootstrap working before the repo exists.
@@ -852,7 +852,7 @@ ${C_BOLD}Browse prompt recipes & backends:${C_RESET}
   $ov_cmd list-presets && $ov_cmd list-models
 
 ${C_BOLD}Help & docs:${C_RESET}  https://open-video.ai   (docs/getting-started.md, docs/h3_ecosystem.md)
-${C_BOLD}Community:${C_RESET}     https://open-video.ai  ·  GitHub Issues on open-video-ai/open-video
+${C_BOLD}Community:${C_RESET}     https://open-video.ai  ·  GitHub Issues on agent-next/video-agent
 
 ${C_DIM}Re-run to resume or repair this checkout. To upgrade, preserve local changes and run git pull --ff-only on your intended product branch first.${C_RESET}
 EOF

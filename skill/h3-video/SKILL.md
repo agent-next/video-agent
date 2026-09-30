@@ -206,8 +206,8 @@ seed · mode · wall time** (from receipt).
 
 ```bash
 # Install (once) — v0.1.0 from the GitHub tag
-git clone --depth 1 --branch v0.1.0 https://github.com/open-video-ai/open-video
-cd open-video && bash scripts/install.sh   # Windows: run inside WSL2
+git clone --depth 1 --branch v0.1.0 https://github.com/agent-next/video-agent
+cd video-agent && bash scripts/install.sh   # Windows: run inside WSL2
 # The website installer is updated separately and may serve an older version.
 
 cd "$OPEN_VIDEO_ROOT"

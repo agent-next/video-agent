@@ -1,6 +1,6 @@
 # Agents — OpenVideo product repo
 
-You are inside the **product** git repo: [`open-video-ai/open-video`](https://github.com/open-video-ai/open-video).
+You are inside the **product** git repo: [`agent-next/video-agent`](https://github.com/agent-next/video-agent).
 
 ## Read first
 

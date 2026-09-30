@@ -11,8 +11,8 @@
 
 **Do not** open a public GitHub issue for security-sensitive reports.
 
-1. Prefer [GitHub Security Advisories](https://github.com/open-video-ai/open-video/security/advisories/new) on this repository.
-2. Or email the maintainers via the org contact listed on the [open-video-ai](https://github.com/open-video-ai) profile once public.
+1. Prefer [GitHub Security Advisories](https://github.com/agent-next/video-agent/security/advisories/new) on this repository.
+2. Or email the maintainers via the org contact listed on the [agent-next](https://github.com/agent-next) profile once public.
 
 Please include:
 

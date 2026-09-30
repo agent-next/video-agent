@@ -7,8 +7,8 @@ failure and judge status.
 ## Get it
 
 ```bash
-git clone --depth 1 --branch v0.1.0 https://github.com/open-video-ai/open-video
-cd open-video && bash scripts/install.sh
+git clone --depth 1 --branch v0.1.0 https://github.com/agent-next/video-agent
+cd video-agent && bash scripts/install.sh
 ```
 
 Use the versioned clone above to install this release. The website installer

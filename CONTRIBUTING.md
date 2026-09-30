@@ -48,8 +48,8 @@ Before writing from scratch, check if an existing project already does it:
 
 ## Quick start for contributors
 ```bash
-git clone https://github.com/open-video-ai/open-video.git
-cd open-video
+git clone https://github.com/agent-next/video-agent.git
+cd video-agent
 python -m pip install -e ".[dev]"
 python -m pytest tests/ -q
 
