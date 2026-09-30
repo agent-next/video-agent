@@ -198,6 +198,10 @@ def test_unresolvable_staging_dir_fails_loudly(tmp_path, monkeypatch):
 
 def test_no_runtime_anywhere_fails_loudly(tmp_path, monkeypatch):
     """No env + no lab + no repo ComfyUI → error, never a silent wrong-dir mkdir."""
+    from open_video.backends.h3 import backend as module
+    monkeypatch.setattr(module, "REPO_ROOT", tmp_path / "repo" / "pkg")
+    for var in ("OPEN_VIDEO_COMFYUI_INPUT", "OPEN_VIDEO_COMFYUI_DIR", "OPEN_VIDEO_LAB", "H3_LAB"):
+        monkeypatch.delenv(var, raising=False)
     monkeypatch.chdir(tmp_path)
     engine = _CaptureEngine()
 
