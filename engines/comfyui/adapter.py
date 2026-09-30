@@ -45,7 +45,7 @@ class ComfyUIAdapter:
         while time.time() - t0 < timeout:
             try:
                 h = self._json(f"{self.server}/history/{prompt_id}", timeout=10)
-            except urllib.error.HTTPError:
+            except (urllib.error.URLError, OSError, json.JSONDecodeError):
                 h = {}
             if prompt_id in h:
                 return h[prompt_id].get("status", {})
@@ -56,7 +56,7 @@ class ComfyUIAdapter:
         """Download the generated files from the save node to output_dir; return local paths."""
         try:
             h = self._json(f"{self.server}/history/{prompt_id}", timeout=10)
-        except urllib.error.HTTPError:
+        except (urllib.error.URLError, OSError, json.JSONDecodeError):
             return []
         outs = (h.get(prompt_id, {}).get("outputs", {})).get(save_node, {}) or {}
         saved = []

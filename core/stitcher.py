@@ -32,7 +32,11 @@ class Stitcher:
             return str(destination)
 
         list_file = self.output_dir / "_concat.txt"
-        list_file.write_text("\n".join(f"file '{p}'" for p in video_paths))
+        # ffmpeg resolves relative entries against the list file's dir, so use absolute paths
+        def _entry(p):
+            return "file '" + str(Path(p).resolve()).replace("'", "'\\''") + "'"
+        list_file.write_text("\n".join(_entry(p) for p in video_paths))
+        output_path = str(Path(output_path).resolve())
 
         codec = ["-c", "copy"] if not re_encode else ["-c:v", "libx264", "-c:a", "aac"]
         cmd = ["ffmpeg", "-y", "-v", "error", "-f", "concat", "-safe", "0",
@@ -47,9 +51,12 @@ class Stitcher:
 
     def extract_last_frame(self, video_path: str, output_png: str) -> Optional[str]:
         """Extract the last frame of a video (for FL2VA chaining)."""
-        subprocess.run(["ffmpeg", "-y", "-v", "error", "-sseof", "-0.1",
-                        "-i", video_path, "-frames:v", "1", output_png],
-                       check=False, timeout=30)
+        Path(output_png).unlink(missing_ok=True)  # never return a stale frame
+        r = subprocess.run(["ffmpeg", "-y", "-v", "error", "-sseof", "-0.1",
+                            "-i", video_path, "-frames:v", "1", output_png],
+                           check=False, timeout=30)
+        if r.returncode != 0:
+            return None
         return output_png if Path(output_png).exists() else None
 
     def upscale_2k(self, video_path: str, output_path: str,
