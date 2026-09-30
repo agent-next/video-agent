@@ -117,7 +117,10 @@ class QualityJudge:
         """Parse vision-model output into structured issues + fixes."""
         issues = []
         # dropped elements: check prompt-keywords vs vision description
-        for elem in vision_result.get("missing_elements", []):
+        me = vision_result.get("missing_elements") or []
+        if isinstance(me, str):
+            me = [me]
+        for elem in [e for e in me if isinstance(e, str)]:
             issues.append(Issue(type="dropped_element", detail=f"'{elem}' from prompt not visible",
                                 fix=f"emphasize '{elem}' earlier + more explicitly in the prompt"))
         if self._flag(vision_result.get("artifacts")):
@@ -166,6 +169,11 @@ class QualityJudge:
                            issues=[Issue("judge_error",
                                          f"vision_fn returned unusable score: {raw.get('score')!r}",
                                          "check VLM response format")])
-        issues = self.diagnose(raw, prompt)
+        try:
+            issues = self.diagnose(raw, prompt)
+        except Exception as e:
+            return Verdict(verdict="FAIL", score=0.0, frames=frames, raw=raw,
+                           issues=[Issue("judge_error", f"diagnose raised {type(e).__name__}",
+                                         "check VLM response format")])
         verdict = "PASS" if score >= self.bar and not issues else "REFINE"
         return Verdict(verdict=verdict, score=score, issues=issues, frames=frames, raw=raw)
