@@ -28,16 +28,27 @@ jobs:
           pip install -e ".[dev]"
           python -m pytest tests/ -q --tb=short
 
-      - name: Build sdist/wheel (optional artifact)
+      - name: Build sdist/wheel
         run: |
           pip install build
           python -m build
-        continue-on-error: true
+
+      - name: Install wheel smoke test
+        run: |
+          python -m venv /tmp/wheel-venv
+          /tmp/wheel-venv/bin/pip install dist/*.whl
+          cd /tmp
+          /tmp/wheel-venv/bin/python -c "
+          import open_video
+          assert 'site-packages' in open_video.__file__, open_video.__file__
+          "
+          /tmp/wheel-venv/bin/python -m open_video --help
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
         with:
           generate_release_notes: true
           body_path: CHANGELOG.md
+          files: dist/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
