@@ -133,11 +133,17 @@ def test_plugin_import_failure_is_diagnostic(tmp_path, capsys, monkeypatch):
         return real_import_module(name, *args, **kwargs)
 
     monkeypatch.setattr(importlib, "import_module", fake_import_module)
-    found = cli.discover_backends()
-    err = capsys.readouterr().err
+    found, errors = cli.discover_backends()
     assert found == []
-    assert "could not import open_video.backends.broken.backend" in err
-    assert "missing dependency 'fake-dep'" in err
+    assert errors == [{"backend": "broken", "stage": "import",
+                       "cause": "missing dependency 'fake-dep'"}]
+
+    # the failure stays user-visible through the CLI surface
+    rc = cli.main(["list-models"])
+    err = capsys.readouterr().err
+    assert rc == 0
+    assert "backend discovery failures" in err
+    assert "broken" in err and "missing dependency 'fake-dep'" in err
 
 
 def test_comfy_fetch_outputs_downloads_saved_files(tmp_path, monkeypatch):

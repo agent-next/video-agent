@@ -82,14 +82,17 @@ BACKEND_REGISTRY = {
 def discover_backends():
     """Walk backends/<name>/backend.py and instantiate every ModelBackend subclass.
 
-    Returns a list of (alias, instance) where alias is the directory name. Import
-    failures are reported on stderr but do not abort discovery.
+    Returns (found, errors): ``found`` is a list of (alias, instance) where alias
+    is the directory name; ``errors`` lists discovery failures as
+    ``{"backend", "stage", "cause"}`` dicts so callers can report why a backend
+    is missing instead of silently omitting it.
     """
     from open_video.core.backend import ModelBackend
     backends_dir = REPO_ROOT / "backends"
     found = []
+    errors = []
     if not backends_dir.is_dir():
-        return found
+        return found, errors
     for sub in sorted(backends_dir.iterdir()):
         if not (sub.is_dir() and (sub / "backend.py").exists()):
             continue
@@ -97,8 +100,7 @@ def discover_backends():
         try:
             mod = importlib.import_module(mod_path)
         except Exception as e:  # pragma: no cover - depends on backend deps
-            print(f"[open-video] warning: could not import {mod_path}: {e}",
-                  file=sys.stderr)
+            errors.append({"backend": sub.name, "stage": "import", "cause": str(e)})
             continue
         for _name, obj in inspect.getmembers(mod, inspect.isclass):
             if obj is ModelBackend or not issubclass(obj, ModelBackend):
@@ -108,11 +110,17 @@ def discover_backends():
             try:
                 inst = obj()
             except Exception as e:  # pragma: no cover
-                print(f"[open-video] warning: {mod_path}.{_name} failed to "
-                      f"instantiate: {e}", file=sys.stderr)
+                errors.append({"backend": sub.name, "stage": "instantiate",
+                               "cause": str(e)})
                 continue
             found.append((sub.name, inst))
-    return found
+    return found, errors
+
+
+def _format_discovery_errors(errors: list) -> str:
+    """One line per discovery failure, for stderr output."""
+    return "\n".join(
+        f"[open-video]   - {e['backend']} ({e['stage']}): {e['cause']}" for e in errors)
 
 
 def load_backend(model_id: str):
@@ -131,9 +139,13 @@ def load_backend(model_id: str):
             raise KeyError(f"model '{model_id}': {mod_path} has no '{cls_name}'")
         return getattr(mod, cls_name)()
 
-    for alias, inst in discover_backends():
+    discovered, errors = discover_backends()
+    for alias, inst in discovered:
         if alias == model_id or getattr(inst, "id", None) == model_id:
             return inst
+    if errors:
+        detail = "; ".join(f"{e['backend']}/{e['stage']}: {e['cause']}" for e in errors)
+        raise KeyError(f"model '{model_id}' not found; backend discovery failures: {detail}")
     raise KeyError(model_id)
 
 
@@ -236,7 +248,8 @@ def cmd_generate(args) -> int:
         backend = load_backend(args.model)
     except KeyError as e:
         print(f"[open-video] error: unknown model '{args.model}' ({e})", file=sys.stderr)
-        known = sorted({*BACKEND_REGISTRY.keys(), *[a for a, _ in discover_backends()]})
+        discovered, _ = discover_backends()
+        known = sorted({*BACKEND_REGISTRY.keys(), *[a for a, _ in discovered]})
         print(f"[open-video] available: {', '.join(known) or '(none)'}", file=sys.stderr)
         return 2
     except Exception as e:
@@ -386,11 +399,15 @@ def cmd_list_models(args) -> int:
             continue
         rows.append(_backend_row(alias, inst))
         seen.add(alias)
-    for alias, inst in discover_backends():
+    discovered, discovery_errors = discover_backends()
+    for alias, inst in discovered:
         if alias in seen:
             continue
         rows.append(_backend_row(alias, inst))
         seen.add(alias)
+    if discovery_errors:
+        print("[open-video] backend discovery failures:", file=sys.stderr)
+        print(_format_discovery_errors(discovery_errors), file=sys.stderr)
 
     if args.json:
         print(json.dumps([{"alias": a, "id": i, "display": d, "modes": m, "max_s": mx}
