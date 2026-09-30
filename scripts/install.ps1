@@ -12,7 +12,7 @@
 # Apache-2.0
 
 $ErrorActionPreference = "Stop"
-$RepoUrl = if ($env:OPEN_VIDEO_REPO) { $env:OPEN_VIDEO_REPO } else { "https://github.com/open-video-ai/open-video.git" }
+$RepoUrl = if ($env:OPEN_VIDEO_REPO) { $env:OPEN_VIDEO_REPO } else { "https://github.com/agent-next/video-agent.git" }
 $Root = if ($env:OPEN_VIDEO_HOME) { $env:OPEN_VIDEO_HOME } else { Join-Path $env:USERPROFILE "open-video" }
 
 function Write-Step($msg) { Write-Host "`n[open-video] $msg" -ForegroundColor Cyan }

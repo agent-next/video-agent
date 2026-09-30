@@ -42,7 +42,7 @@ backend. A Mac port (`minimax-h3-mlx`) exists in the community but is not wired 
 ## 2. Clone open-video
 
 ```bash
-git clone https://github.com/open-video-ai/open-video.git
+git clone https://github.com/agent-next/video-agent.git
 cd open-video
 ```
 

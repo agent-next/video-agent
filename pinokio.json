@@ -25,9 +25,9 @@
       "title": "Project",
       "links": [
         { "title": "Homepage", "value": "https://open-video.ai" },
-        { "title": "GitHub", "value": "https://github.com/open-video-ai/open-video" },
-        { "title": "Docs", "value": "https://github.com/open-video-ai/open-video/tree/master/docs" },
-        { "title": "Issues", "value": "https://github.com/open-video-ai/open-video/issues" }
+        { "title": "GitHub", "value": "https://github.com/agent-next/video-agent" },
+        { "title": "Docs", "value": "https://github.com/agent-next/video-agent/tree/master/docs" },
+        { "title": "Issues", "value": "https://github.com/agent-next/video-agent/issues" }
       ]
     },
     {

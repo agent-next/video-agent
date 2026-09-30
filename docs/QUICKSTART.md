@@ -12,7 +12,7 @@
 
 ### 1. Install
 ```bash
-git clone --depth 1 --branch v0.1.0 https://github.com/open-video-ai/open-video
+git clone --depth 1 --branch v0.1.0 https://github.com/agent-next/video-agent
 cd open-video
 bash scripts/install.sh
 ```
