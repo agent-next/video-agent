@@ -8,7 +8,7 @@ failure and judge status.
 
 ```bash
 git clone --depth 1 --branch v0.1.0 https://github.com/agent-next/video-agent
-cd open-video && bash scripts/install.sh
+cd video-agent && bash scripts/install.sh
 ```
 
 Use the versioned clone above to install this release. The website installer

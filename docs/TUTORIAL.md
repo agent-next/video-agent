@@ -65,7 +65,7 @@ Full detail: [`getting-started.md`](./getting-started.md) · [`QUICKSTART.md`](.
 
 ```bash
 git clone --depth 1 --branch v0.1.0 https://github.com/agent-next/video-agent
-cd open-video
+cd video-agent
 bash scripts/install.sh
 ```
 
@@ -82,7 +82,7 @@ There are **no** shipping primary installers named `OpenVideo-Setup.exe`, `OpenV
 
 ```bash
 git clone https://github.com/agent-next/video-agent.git
-cd open-video
+cd video-agent
 # optional: bash scripts/install.sh
 python -m open_video list-models
 python -m open_video pull h3 --check-only

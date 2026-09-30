@@ -13,7 +13,7 @@
 ### 1. Install
 ```bash
 git clone --depth 1 --branch v0.1.0 https://github.com/agent-next/video-agent
-cd open-video
+cd video-agent
 bash scripts/install.sh
 ```
 First run downloads ~54GB of H3 weights (resumable, integrity-verified).

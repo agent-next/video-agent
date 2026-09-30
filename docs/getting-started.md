@@ -43,7 +43,7 @@ backend. A Mac port (`minimax-h3-mlx`) exists in the community but is not wired 
 
 ```bash
 git clone https://github.com/agent-next/video-agent.git
-cd open-video
+cd video-agent
 ```
 
 The orchestrator is pure Python and has **no third-party pip dependencies** — `core/`, `cli/`,
