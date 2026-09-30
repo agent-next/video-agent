@@ -426,8 +426,12 @@ def main(argv=None) -> int:
     cli = _load_cli()
 
     if args.list_models:
-        for alias, inst in cli.discover_backends():
+        discovered, errors = cli.discover_backends()
+        for alias, inst in discovered:
             print(f"{alias:<14} {getattr(inst,'id',alias):<22} {inst.display_name}")
+        for err in errors:
+            print(f"[bench] warning: {err['backend']} ({err['stage']}): {err['cause']}",
+                  file=sys.stderr)
         return 0
 
     if not args.gpu:
@@ -441,7 +445,8 @@ def main(argv=None) -> int:
         backend = cli.load_backend(args.model)
     except Exception as e:
         print(f"[bench] error: could not load model '{args.model}': {e}", file=sys.stderr)
-        known = [a for a, _ in cli.discover_backends()]
+        discovered, _ = cli.discover_backends()
+        known = [a for a, _ in discovered]
         print(f"[bench] available: {', '.join(known) or '(none)'}", file=sys.stderr)
         return 2
 
