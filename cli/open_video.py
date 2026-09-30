@@ -35,6 +35,7 @@ import argparse
 import importlib
 import inspect
 import json
+import math
 import os
 import sys
 from pathlib import Path
@@ -236,6 +237,19 @@ def _emit_generate_json(shots, film, dry_run: bool):
     print(json.dumps({"dry_run": dry_run, "validated": True, "film": film, "shots": out}))
 
 
+def _emit_failure_json(args, shots, exit_code: int, error: str) -> None:
+    """--json failure line (exit 3/4): same shot keys as _emit_generate_json."""
+    out = []
+    for s_ in shots:
+        receipt = s_.receipt or {}
+        out.append({"scene_id": s_.scene_id, "mode": s_.mode,
+                    "duration_s": s_.duration_s, "seed": s_.seed,
+                    "video_path": s_.video_path, "verdict": s_.verdict,
+                    "receipt": receipt, "error": receipt.get("error")})
+    print(json.dumps({"ok": False, "exit_code": exit_code, "error": error,
+                      "dry_run": False, "film": None, "shots": out}))
+
+
 def cmd_generate(args) -> int:
     print("[open-video] [1/5] loading backend + validating prompt…", flush=True)
     # 1. prompt validation
@@ -273,8 +287,8 @@ def cmd_generate(args) -> int:
         return 2
 
     # 5. duration sanity
-    if args.duration <= 0:
-        print(f"[open-video] error: --duration must be > 0 (got {args.duration})",
+    if not math.isfinite(args.duration) or args.duration <= 0:
+        print(f"[open-video] error: --duration must be a finite number > 0 (got {args.duration})",
               file=sys.stderr)
         return 2
     if args.duration < 1.0:
@@ -331,7 +345,13 @@ def cmd_generate(args) -> int:
     #     carry template prompts and need an LLM planner — be honest about it.
     if len(shots) == 1:
         shots[0].prompt = args.prompt
-    elif any("TODO" in (s.prompt or "") for s in shots):
+    elif any("TODO: LLM generates" in (s.prompt or "") for s in shots):
+        if not args.dry_run:
+            print(f"[open-video] error: multi-shot prompt generation needs an LLM and is "
+                  f"not wired; use --duration <= {caps.max_duration_s:g} for a single-shot "
+                  f"film using your prompt verbatim, or pass shots explicitly.",
+                  file=sys.stderr)
+            return 2
         print(f"[open-video] note: multi-shot plan uses v0 template prompts. Wire an "
               f"LLM planner (Planner(llm_fn=...)) for authored per-shot prompts, or set "
               f"--duration <= {caps.max_duration_s:g}s for a single-shot film using "
@@ -364,9 +384,11 @@ def cmd_generate(args) -> int:
 
     engine = load_engine(args.server, output_dir=out_dir)
     if not engine.health():
-        print(f"[open-video] error: ComfyUI not reachable at {args.server}. "
-              f"Start it (or use --dry-run to validate without generating).",
-              file=sys.stderr)
+        msg = (f"ComfyUI not reachable at {args.server}. "
+               f"Start it (or use --dry-run to validate without generating).")
+        print(f"[open-video] error: {msg}", file=sys.stderr)
+        if args.json:
+            _emit_failure_json(args, shots, 3, msg)
         return 3
     _bind_engine(backend, engine)
 
@@ -376,6 +398,8 @@ def cmd_generate(args) -> int:
     film, _final_plan = pipeline.make_film(shots, out_path=str(out_path))
     if not film:
         print("[open-video] error: pipeline did not produce a film.", file=sys.stderr)
+        if args.json:
+            _emit_failure_json(args, shots, 4, "pipeline did not produce a film.")
         return 4
     print(f"[open-video] [5/5] DONE -> {film}", flush=True)
     if args.json:
@@ -517,7 +541,11 @@ def build_generate_parser():
                "  open_video \"waves at sunset\" --duration 10 --model h3\n"
                "  open_video \"...\" --mode i2v --first-frame start.png --output out.mp4\n"
                "  open_video \"...\" --dry-run        # plan only, no generation\n"
-               "  open_video list-models\n",
+               "  open_video list-models\n"
+               "\n"
+               f"subcommands: {', '.join(SUBCOMMANDS)}\n"
+               "  (a prompt equal to a subcommand word is dispatched as that subcommand;\n"
+               "   use `open-video run \"status\"` to generate from such a prompt)\n",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     p.add_argument("prompt", help="Concept / prompt for the film.")
@@ -627,7 +655,9 @@ def build_pull_parser():
     p.add_argument(
         "--models-dir",
         default=None,
-        help="Weights root (default: OPEN_VIDEO_MODELS or <repo>/ComfyUI/models).",
+        help="Weights root (default: OPEN_VIDEO_MODELS, $OPEN_VIDEO_LAB/h3_models, "
+             "OPEN_VIDEO_HOME, ../lab/h3_models, or <repo>/ComfyUI/models; "
+             "see core/h3_weights.default_models_dir).",
     )
     p.add_argument(
         "--check-only",
