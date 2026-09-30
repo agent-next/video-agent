@@ -1,8 +1,8 @@
-# OpenVideo — Beginner's Tutorial (v0.0.1)
+# OpenVideo — Beginner's Tutorial (v0.1.0)
 
 > **From zero to your first local H3 clip on an NVIDIA GPU.**
 >
-> OpenVideo v0.0.1 is **local MiniMax H3** (install · pull · status · run) plus an **agent skill
+> OpenVideo v0.1.0 is **local MiniMax H3** (install · pull · status · run) plus an **agent skill
 > harness** for high-quality prompts. Longer “director” features (live vision judge, multi-minute
 > film) are designed and partially scaffolded — not finished product claims.
 
@@ -24,7 +24,7 @@
 
 ## 1. What is OpenVideo today?
 
-**OpenVideo** is open-source video generation. In **v0.0.1** that means:
+**OpenVideo** is open-source video generation. In **v0.1.0** that means:
 
 1. **Local MiniMax H3** on your machine via ComfyUI — `install` · `pull` · `status` · `run`
 2. **Agent skill harness** (`skill/h3-video`) so coding agents can craft official 3-field H3
@@ -133,7 +133,7 @@ open-video run "a neon-lit koi fish swimming slowly through falling rain, soft r
 ```
 
 Single shots are typically **4–15 seconds** (model ceiling). Longer targets need multi-shot
-orchestration (section 5) — still partial in v0.0.1.
+orchestration (section 5) — still partial in v0.1.0.
 
 ### Step 4 — Find the mp4
 
@@ -144,16 +144,16 @@ tighter prompt if the take is off.
 
 ## 4. Use presets (recipe files)
 
-**Presets** in the repo are YAML **coherence recipes** under
+`open-video list-presets` lists the **prompt recipes** in
+[`library/prompts/`](../library/prompts/). The YAML **coherence recipes** under
 [`library/coherence_recipes/`](../library/coherence_recipes/) — templates for film *types*
-(cinematic short, product ad, social clip, …). They are starting points for planners and humans,
-not a finished “pick a preset in a GUI and get a commercial” product.
+(cinematic short, product ad, social clip, …) — are separate files that `list-presets` does not
+show; open them directly. Both are starting points for planners and humans, not a finished
+“pick a preset in a GUI and get a commercial” product.
 
 ```bash
-# when wired in your checkout:
-python -m open_video list-presets
-# or open the YAML files directly
-ls library/coherence_recipes/
+python -m open_video list-presets     # prompt recipes in library/prompts/
+ls library/coherence_recipes/         # coherence recipes (YAML), open directly
 ```
 
 Copy a recipe, edit shot structure / duration, and feed prompts into `run` / `h3_agent.py`. A
@@ -166,7 +166,7 @@ polished preset picker UI is future work.
 Models cap a **single shot** around **15s**. Longer pieces need: plan shots → generate each →
 chain last-frame → first-frame (FL2VA) → stitch with ffmpeg.
 
-**v0.0.1 status:**
+**v0.1.0 status:**
 
 | Piece | Status |
 |---|---|
@@ -192,7 +192,7 @@ A **LoRA** is a small style/identity adapter (`.safetensors`) that can sit on H3
 
 **Planned:** gallery, `open-video lora pull`, and one-click `--lora name@strength` UX — documented
 as a target in [`library-and-loras.md`](./library-and-loras.md). Do not expect a full community
-marketplace in v0.0.1.
+marketplace in v0.1.0.
 
 Contribution shape when you train one: recipe markdown + off-repo weights + consent rules
 (`templates/lora_recipe.md`).
@@ -204,10 +204,10 @@ Contribution shape when you train one: recipe markdown + off-repo weights + cons
 **Idea:** generate → extract frames → vision-judge vs prompt → refine / best-of-N → keep the take.
 
 This is **core product IP we are building toward**, inspired by research patterns (e.g. VISTA-style
-judge + refine). In v0.0.1:
+judge + refine). In v0.1.0:
 
 - `core/judge.py` exists as a **scaffold**
-- Without a wired `vision_fn`, assessment may **PASS by default** (hook ready; not a live critic)
+- Without `OPEN_VIDEO_VLM_URL` and `OPEN_VIDEO_VLM_MODEL` set, the verdict is **SKIPPED** (score 0), never a fake PASS; with them set, an opt-in VLM judge runs with bounded REFINE retries
 - Agents should still **validate prompts** and re-run manually when quality is poor
 
 Do **not** market OpenVideo as “the first open project that already ships a live quality loop.”

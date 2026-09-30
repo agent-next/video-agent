@@ -107,7 +107,7 @@ a hard validator, and curated presets (`open-video list-presets`).
 | **Generate** | Local MiniMax H3 via ComfyUI — `pull` / `status` / `run` | Multi-model backends (Wan, LTX, …) |
 | **Agent path** | `skill/h3-video` crafts official prompts + drives the CLI | Full multi-shot director agent |
 | **Judge loop** | Opt-in real VLM judge via env `OPEN_VIDEO_VLM_URL/MODEL/KEY` + bounded REFINE retries (`OPEN_VIDEO_JUDGE_RETRIES`, best take kept); honest `SKIPPED` (score 0) when unset | Best-of-N tournament judging |
-| **Long film** | Single clips (H3 shot length) | Planner → stitch multi-minute film |
+| **Long film** | Single clips; multi-shot (>15 s) planning is experimental; per-shot prompts are not auto-generated yet | Planner → stitch multi-minute film |
 | **Hosted try** | Site `/try` is a **browser mockup** | Real hosted generate |
 
 The generate → judge → **refine** loop runs today: point `OPEN_VIDEO_VLM_URL` at any
