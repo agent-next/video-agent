@@ -59,6 +59,9 @@ def main(argv=None) -> int:
     judge = QualityJudge.from_env()
     out = {"timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"), "prompt": prompt,
            "a": {"video": va}, "b": {"video": vb}}
+    def _judged(side: dict) -> bool:  # SKIPPED and judge_error FAILs are not judgments
+        return not (side["verdict"] == "SKIPPED"
+                    or any(i["type"] == "judge_error" for i in side["issues"]))
     for side, video in (("a", va), ("b", vb)):
         v = judge.assess(video, prompt, shot_id=1)
         out[side].update({"verdict": v.verdict, "score": v.score,
@@ -67,7 +70,7 @@ def main(argv=None) -> int:
     out["summary"] = {
         "a_score": out["a"]["score"], "b_score": out["b"]["score"],
         "delta_b_minus_a": round(out["b"]["score"] - out["a"]["score"], 3),
-        "judged": not (out["a"]["verdict"] == "SKIPPED" or out["b"]["verdict"] == "SKIPPED"),
+        "judged": _judged(out["a"]) and _judged(out["b"]),
     }
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(out, indent=2))

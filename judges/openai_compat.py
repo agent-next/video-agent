@@ -94,4 +94,6 @@ def vision_fn_from_env():
     model = os.environ.get("OPEN_VIDEO_VLM_MODEL", "").strip()
     if not url or not model:
         return None
-    return make_vision_fn(url, model, api_key=os.environ.get("OPEN_VIDEO_VLM_KEY") or None)
+    timeout = float(os.environ.get("OPEN_VIDEO_VLM_TIMEOUT", "120"))
+    return make_vision_fn(url, model, api_key=os.environ.get("OPEN_VIDEO_VLM_KEY") or None,
+                          timeout=timeout)
