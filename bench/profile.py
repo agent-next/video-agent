@@ -239,11 +239,12 @@ def call_generate(backend, req, engine):
 # Single config run
 # =============================================================================#
 def run_config(backend, engine, name, w, h, dur, seed, prompt, mode,
-               server_log, steps_hint, gpu_index, results, receipt_path):
+               server_log, steps_hint, gpu_index, results, receipt_path,
+               profile="default"):
     """Run one generation config, capture metrics, write incremental JSON."""
     from open_video.core.backend import ShotRequest
     req = ShotRequest(prompt=prompt, mode=mode, width=w, height=h,
-                      duration_s=dur, seed=seed)
+                      duration_s=dur, seed=seed, extra={"settings_profile": profile})
 
     sampler = ResourceSampler(gpu_index=gpu_index)
     sampler.start()
@@ -398,6 +399,9 @@ def parse_args(argv=None):
                    help="Comma-separated durations in seconds.")
     p.add_argument("--aspect", default="16:9", help="Aspect ratio (default 16:9).")
     p.add_argument("--mode", default="t2v", help="Generation mode (default t2v).")
+    p.add_argument("--profile", default="default",
+                   help="Backend settings profile (default 'default'; e.g. 'vdn_dmd8' for "
+                        "the OpenVDN 8-NFE distilled route when the backend provides it).")
     p.add_argument("--prompt", default=DEFAULT_PROMPT, help="Prompt text (default: cinematic waves).")
     p.add_argument("--seed", type=int, default=101, help="Base seed (seed+i per config).")
     p.add_argument("--warmup", type=int, default=1,
@@ -478,10 +482,16 @@ def main(argv=None) -> int:
     results_dir.mkdir(parents=True, exist_ok=True)
     safe = lambda s: re.sub(r"[^A-Za-z0-9._-]", "-", s)
     date = time.strftime("%Y%m%d")
-    receipt_path = results_dir / f"{safe(args.model)}-{safe(args.gpu)}-{date}.json"
+    profile_tag = f"-{safe(args.profile)}" if args.profile != "default" else ""
+    receipt_path = results_dir / f"{safe(args.model)}{profile_tag}-{safe(args.gpu)}-{date}.json"
     results = json.loads(receipt_path.read_text()) if receipt_path.exists() else {}
 
-    steps_hint = backend.default_settings().get("steps")
+    profiles = backend.settings_profiles() if hasattr(backend, "settings_profiles") else {}
+    if args.profile != "default" and args.profile not in profiles:
+        print(f"[bench] error: backend '{backend.id}' has no settings profile "
+              f"'{args.profile}' (have: {', '.join(profiles) or 'none'})", file=sys.stderr)
+        return 2
+    steps_hint = profiles.get(args.profile, backend.default_settings()).get("steps")
 
     # --- build config matrix --------------------------------------------------
     try:
@@ -504,6 +514,7 @@ def main(argv=None) -> int:
         "aspect": args.aspect,
         "mode": args.mode,
         "prompt": args.prompt,
+        "settings_profile": args.profile,
         "steps_hint": steps_hint,
         "capabilities": {
             "t2v": backend.capabilities.t2v, "i2v": backend.capabilities.i2v,
@@ -513,7 +524,7 @@ def main(argv=None) -> int:
             "max_short_edge_px": backend.capabilities.max_short_edge_px,
         },
         "constraints": backend.constraints(),
-        "settings": backend.default_settings(),
+        "settings": profiles.get(args.profile, backend.default_settings()),
         "timestamp": datetime.now().isoformat(timespec="seconds"),
         "configs": [c[0] for c in cfgs],
     }
@@ -536,7 +547,7 @@ def main(argv=None) -> int:
         for _ in range(args.warmup):
             run_config(backend, engine, warmup_key, ww, wh, wdur, wseed,
                        args.prompt, args.mode, args.server_log, steps_hint,
-                       gpu_index, results, receipt_path)
+                       gpu_index, results, receipt_path, profile=args.profile)
 
     # --- measured matrix (resumable) -----------------------------------------
     for name, w, h, dur, seed in cfgs:
@@ -545,7 +556,8 @@ def main(argv=None) -> int:
             continue
         print(f"[bench] run {name}  {w}x{h}  {dur}s  seed={seed}", flush=True)
         run_config(backend, engine, name, w, h, dur, seed, args.prompt, args.mode,
-                   args.server_log, steps_hint, gpu_index, results, receipt_path)
+                   args.server_log, steps_hint, gpu_index, results, receipt_path,
+                   profile=args.profile)
 
     # --- summary --------------------------------------------------------------
     print_summary(meta, results, warmup_key=warmup_key)
