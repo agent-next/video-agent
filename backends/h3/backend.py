@@ -112,7 +112,7 @@ class H3Backend(ModelBackend):
                 "text_encoder_quant": "qwen3vl_32b_minimax_h3_int8_convrot.safetensors",
                 "video_vae": "minimax_h3_video_vae_fp16.safetensors",
                 "audio_vae": "minimax_h3_audio_vae_fp32.safetensors",
-                "engine_flags": "--lowvram --use-sage-attention",
+                "engine_flags": "(set per host; record actual launch flags in the lab-freeze doc)",
                 "known_issues": {"NVFP4": "avoid on 5090 (ComfyUI #14157)"}}
 
     def settings_profiles(self) -> dict:

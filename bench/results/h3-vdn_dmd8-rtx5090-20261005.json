@@ -46,7 +46,7 @@
       "text_encoder_quant": "qwen3vl_32b_minimax_h3_int8_convrot.safetensors",
       "video_vae": "minimax_h3_video_vae_fp16.safetensors",
       "audio_vae": "minimax_h3_audio_vae_fp32.safetensors",
-      "engine_flags": "--lowvram --use-sage-attention",
+      "engine_flags": "(none) - plain launch on 2026-10-04/05 (server log has no lowvram/sage lines); corrected from a stale backend default",
       "steps": 8,
       "sampler": "vdn_native_euler (plan node)",
       "scheduler": "vdn_dmd8_sigma_schedule (plan node)",
@@ -57,7 +57,8 @@
       "modes": [
         "t2v"
       ],
-      "no_lora_stacking": true
+      "no_lora_stacking": true,
+      "engine_flags_correction": "was '--lowvram --use-sage-attention' - inherited stale default, not the actual launch; see docs/lab-freeze-2026-10-05.txt"
     },
     "timestamp": "2026-10-05T01:03:43",
     "configs": [
