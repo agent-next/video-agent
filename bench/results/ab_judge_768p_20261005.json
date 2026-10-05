@@ -1,0 +1,49 @@
+{
+  "timestamp": "2026-10-05T01:42:19",
+  "prompt": "A cinematic shot of waves crashing on a rocky shore at sunset, slow motion, detailed, natural light.",
+  "judge": "glm-5.3-flash via agent-gateway (free-coder-13), frames 5x640px jpeg",
+  "a": {
+    "video": "/mnt/data/workspace/open-video-project/.worktrees/ov-vdn-dmd8/bench/output/1791160935_ov_t2v_00004_.mp4",
+    "verdict": "JUDGED",
+    "score": 0.88,
+    "detail": {
+      "score": 0.88,
+      "missing_elements": [],
+      "artifacts": "Airborne material in frame 3 reads slightly more like dark debris than water spray, appearing marginally unnatural",
+      "motion_quality": "good",
+      "incoherence": false
+    },
+    "frames": [
+      "/tmp/judge_frames/768p/f0.jpg",
+      "/tmp/judge_frames/768p/f1.jpg",
+      "/tmp/judge_frames/768p/f2.jpg",
+      "/tmp/judge_frames/768p/f3.jpg",
+      "/tmp/judge_frames/768p/f4.jpg"
+    ]
+  },
+  "b": {
+    "video": "/mnt/data/workspace/open-video-project/.worktrees/ov-vdn-dmd8/bench/output/1791177010_ov_t2v_00006_.mp4",
+    "verdict": "JUDGED",
+    "score": 0.88,
+    "detail": {
+      "score": 0.88,
+      "missing_elements": [],
+      "artifacts": "",
+      "motion_quality": "good",
+      "incoherence": false
+    },
+    "frames": [
+      "/tmp/judge_frames/768p/f0.jpg",
+      "/tmp/judge_frames/768p/f1.jpg",
+      "/tmp/judge_frames/768p/f2.jpg",
+      "/tmp/judge_frames/768p/f3.jpg",
+      "/tmp/judge_frames/768p/f4.jpg"
+    ]
+  },
+  "summary": {
+    "a_score": 0.88,
+    "b_score": 0.88,
+    "delta_b_minus_a": 0.0,
+    "judged": true
+  }
+}
