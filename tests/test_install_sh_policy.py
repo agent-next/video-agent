@@ -64,5 +64,9 @@ def test_comfyui_pin_single_source():
     # bootstrap fallback (standalone curl|bash runs before the repo exists)
     assert len(re.findall(r'COMFYUI_COMMIT="[0-9a-f]{40}"',
                           (root / "scripts" / "lab-restore.sh").read_text())) == 0
-    assert len(re.findall(r'COMFYUI_COMMIT="[0-9a-f]{40}"',
-                          (root / "scripts" / "install.sh").read_text())) == 1
+    inst = re.findall(r'COMFYUI_COMMIT="([0-9a-f]{40})"',
+                      (root / "scripts" / "install.sh").read_text())
+    assert len(inst) == 1
+    # the standalone-bootstrap fallback must not drift from the pin (single source)
+    assert inst[0] == sha.group(1), (
+        f"install.sh fallback {inst[0]} != comfyui.pin {sha.group(1)}")

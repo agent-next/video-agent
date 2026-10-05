@@ -53,7 +53,18 @@ DEFAULT_OUTPUT_DIR = BENCH_DIR / "output"
 
 # ComfyUI server-log regexes (engine-level; model-agnostic). tqdm KSampler lines
 # look like: ` 45%|████▍     | 9/20 [00:42<00:51,  4.69s/it]`
-PROMPT_EXEC_RE = re.compile(r"Prompt executed in ([0-9.]+) seconds")
+PROMPT_EXEC_RE = re.compile(
+    r"Prompt executed in (?:([0-9.]+) seconds|(\d+):(\d{2}):(\d{2}))")  # s | HH:MM:SS
+
+
+def prompt_exec_seconds(m: "re.Match") -> float | None:
+    """Match PROMPT_EXEC_RE -> seconds (ComfyUI switches to HH:MM:SS past ~10 min)."""
+    if m is None:
+        return None
+    if m.group(1) is not None:
+        return float(m.group(1))
+    h, mi, s = int(m.group(2)), int(m.group(3)), int(m.group(4))
+    return h * 3600 + mi * 60 + s
 STEP_RE = re.compile(r"(\d+)/(\d+)\s*\[[0-9:]+<[0-9:]+,\s*([0-9.]+)s/it")
 
 # Short-edge pixel targets for the named resolution presets.
@@ -151,9 +162,19 @@ class ResourceSampler:
             time.sleep(self.interval)
 
 
-def last_log_match(path: str, pattern: re.Pattern):
-    """Last regex match in the ComfyUI server log (reads only the last ~1MB so
-    multi-GB logs stay cheap). Returns the re.Match or None."""
+def log_size(path: str) -> int:
+    """Current byte size of the server log (anchor so a run only ever sees its
+    own lines, never an earlier run's)."""
+    try:
+        return os.path.getsize(path) if path else 0
+    except OSError:
+        return 0
+
+
+def last_log_match(path: str, pattern: re.Pattern, from_offset: int = 0):
+    """Last regex match in the ComfyUI server log at/after ``from_offset``
+    (reads only the last ~1MB so multi-GB logs stay cheap). Returns the
+    re.Match or None."""
     if not path:
         return None
     p = Path(path)
@@ -164,7 +185,8 @@ def last_log_match(path: str, pattern: re.Pattern):
             f.seek(0, 2)
             size = f.tell()
             chunk = min(size, 1 << 20)
-            f.seek(size - chunk)
+            start = max(from_offset, size - chunk)
+            f.seek(start)
             tail = f.read().decode("utf-8", errors="ignore")
     except OSError:
         return None
@@ -248,6 +270,7 @@ def run_config(backend, engine, name, w, h, dur, seed, prompt, mode,
 
     sampler = ResourceSampler(gpu_index=gpu_index)
     sampler.start()
+    log_offset = log_size(server_log)
     t0 = time.time()
     result = None
     err = None
@@ -271,11 +294,11 @@ def run_config(backend, engine, name, w, h, dur, seed, prompt, mode,
             except OSError:
                 pass
         # engine-level timings from the ComfyUI server log (optional)
-        pe = last_log_match(server_log, PROMPT_EXEC_RE)
-        prompt_exec_s = float(pe.group(1)) if pe else None
+        pe = last_log_match(server_log, PROMPT_EXEC_RE, from_offset=log_offset)
+        prompt_exec_s = prompt_exec_seconds(pe)
         per_step_s = None
         log_steps = None
-        sm = last_log_match(server_log, STEP_RE)
+        sm = last_log_match(server_log, STEP_RE, from_offset=log_offset)
         if sm:
             per_step_s = float(sm.group(3))
             log_steps = int(sm.group(2))

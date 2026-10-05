@@ -3,22 +3,30 @@
 
 Used by the bench flow to compare settings profiles (e.g. default 20-step vs
 vdn_dmd8 8-NFE) on identical prompts. Reads video paths directly or the newest
-output videos referenced in two bench receipt JSONs; judges each with
-QualityJudge.from_env() (same prompt, same frame count) and writes a
-side-by-side receipt. VLM wiring is the standard judge env (see
-judges/openai_compat.py); without it both verdicts are honest SKIPPED and the
-script exits 2 so callers never mistake "not judged" for "judged equal".
+output videos referenced in two bench receipt JSONs. For each side it extracts
+evenly spaced frames (downscaled JPEG, payload-safe for constrained links) and
+calls the OpenAI-compatible VLM directly (judges/openai_compat.py env wiring);
+per-side frames live in separate directories so the two receipts never alias.
+
+Writes a side-by-side receipt and prints the summary. Anything that is not a
+real judgment — no VLM env, frame-extraction failure, VLM error — makes
+``judged:false`` and exits 2, so callers never mistake "not judged" for
+"judged equal".
 """
 from __future__ import annotations
 import argparse
 import json
+import subprocess
 import sys
 import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from open_video.core.judge import QualityJudge
+from judges.openai_compat import vision_fn_from_env
+
+FRAMES_PER_SIDE = 5
+FRAME_WIDTH_PX = 640
 
 
 def _video_from_receipt(receipt_path: Path) -> tuple[str, str]:
@@ -32,6 +40,39 @@ def _video_from_receipt(receipt_path: Path) -> tuple[str, str]:
     return path, prompt or ""
 
 
+def _rel(path: str) -> str:
+    """Repo-relative form when the file lives under the cwd, else as given."""
+    try:
+        return str(Path(path).resolve().relative_to(Path.cwd().resolve()))
+    except ValueError:
+        return path
+
+
+def _extract_frames(video: str, out_dir: Path) -> list[str]:
+    """Evenly spaced frames as downscaled JPEGs; raises on any failure."""
+    out_dir.mkdir(parents=True, exist_ok=True)
+    for old in out_dir.glob("f*.jpg"):
+        old.unlink()
+    probe = subprocess.run(
+        ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+         "-of", "csv=p=0", video], capture_output=True, text=True)
+    if probe.returncode != 0:
+        raise RuntimeError(f"ffprobe failed: {probe.stderr.strip()[:200]}")
+    dur = float(probe.stdout.strip())
+    paths = []
+    for i in range(FRAMES_PER_SIDE):
+        t = dur * i / FRAMES_PER_SIDE
+        p = out_dir / f"f{i}.jpg"
+        r = subprocess.run(
+            ["ffmpeg", "-y", "-loglevel", "error", "-ss", str(t), "-i", video,
+             "-frames:v", "1", "-vf", f"scale={FRAME_WIDTH_PX}:-2", "-q:v", "3",
+             str(p)], capture_output=True, text=True)
+        if r.returncode != 0 or not p.is_file() or p.stat().st_size == 0:
+            raise RuntimeError(f"frame {i} extraction failed: {r.stderr.strip()[:200]}")
+        paths.append(str(p))
+    return paths
+
+
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--a-receipt", type=Path, help="bench receipt JSON of side A")
@@ -41,6 +82,8 @@ def main(argv=None) -> int:
     p.add_argument("--prompt", help="shared prompt (required with --a/--b-video "
                                     "unless a receipt supplies it)")
     p.add_argument("--out", type=Path, required=True, help="output receipt JSON")
+    p.add_argument("--frames-root", type=Path, default=Path("bench/output/ab_judge_frames"),
+                   help="where per-side frames are written (default: gitignored bench/output)")
     args = p.parse_args(argv)
 
     va, vb, prompt = args.a_video, args.b_video, args.prompt
@@ -56,21 +99,40 @@ def main(argv=None) -> int:
         if not Path(v).is_file():
             raise SystemExit(f"video not found: {v}")
 
-    judge = QualityJudge.from_env()
-    out = {"timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"), "prompt": prompt,
-           "a": {"video": va}, "b": {"video": vb}}
-    def _judged(side: dict) -> bool:  # SKIPPED and judge_error FAILs are not judgments
-        return not (side["verdict"] == "SKIPPED"
-                    or any(i["type"] == "judge_error" for i in side["issues"]))
+    vision_fn = vision_fn_from_env()
+    out = {"timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"), "prompt": prompt}
+    if vision_fn is None:
+        out["summary"] = {"judged": False,
+                          "reason": "no judge env: set OPEN_VIDEO_VLM_URL + OPEN_VIDEO_VLM_MODEL"}
+        args.out.parent.mkdir(parents=True, exist_ok=True)
+        args.out.write_text(json.dumps(out, indent=2))
+        print(json.dumps(out["summary"]))
+        return 2
+    import os
+    out["judge"] = {"model": os.environ.get("OPEN_VIDEO_VLM_MODEL", ""),
+                    "transport": "OpenAI-compatible chat completions (env)",
+                    "frames_per_side": FRAMES_PER_SIDE, "frame_width_px": FRAME_WIDTH_PX}
+
+    frames_dir = args.frames_root / args.out.stem
     for side, video in (("a", va), ("b", vb)):
-        v = judge.assess(video, prompt, shot_id=1)
-        out[side].update({"verdict": v.verdict, "score": v.score,
-                          "issues": [{"type": i.type, "detail": i.detail} for i in v.issues],
-                          "frames": v.frames})
+        entry = {"video": _rel(video)}
+        try:
+            fps = _extract_frames(video, frames_dir / side)
+            verdict = vision_fn(fps, prompt)
+            entry.update({"verdict": "JUDGED", "score": float(verdict["score"]),
+                          "detail": verdict, "frames": [_rel(f) for f in fps]})
+        except Exception as e:  # noqa: BLE001 - recorded, never a fake judgment
+            kind = "extraction_error" if "extraction failed" in str(e) or "ffprobe" in str(e) \
+                else "judge_error"
+            entry.update({"verdict": kind, "score": 0.0, "error": str(e)[:300]})
+        out[side] = entry
+
+    def _judged(side: str) -> bool:
+        return out[side]["verdict"] == "JUDGED"
     out["summary"] = {
         "a_score": out["a"]["score"], "b_score": out["b"]["score"],
         "delta_b_minus_a": round(out["b"]["score"] - out["a"]["score"], 3),
-        "judged": _judged(out["a"]) and _judged(out["b"]),
+        "judged": _judged("a") and _judged("b"),
     }
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(out, indent=2))

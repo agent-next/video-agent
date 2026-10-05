@@ -1,49 +1,54 @@
 {
-  "timestamp": "2026-10-05T01:44:34",
+  "timestamp": "2026-10-05T09:27:54",
   "prompt": "A cinematic shot of waves crashing on a rocky shore at sunset, slow motion, detailed, natural light.",
-  "judge": "glm-5.3-flash via agent-gateway (free-coder-13), frames 5x640px jpeg",
-  "a": {
-    "video": "/mnt/data/workspace/open-video-project/.worktrees/ov-vdn-dmd8/bench/output/1791160306_ov_t2v_00003_.mp4",
-    "verdict": "JUDGED",
-    "score": 0.92,
-    "detail": {
-      "score": 0.92,
-      "missing_elements": [],
-      "artifacts": "Slight green lens flare spot near bottom center in early frames",
-      "motion_quality": "good",
-      "incoherence": false
-    },
-    "frames": [
-      "/tmp/judge_frames/480p/f0.jpg",
-      "/tmp/judge_frames/480p/f1.jpg",
-      "/tmp/judge_frames/480p/f2.jpg",
-      "/tmp/judge_frames/480p/f3.jpg",
-      "/tmp/judge_frames/480p/f4.jpg"
-    ]
+  "judge": {
+    "model": "free-coder-13",
+    "transport": "OpenAI-compatible chat completions (env)",
+    "frames_per_side": 5,
+    "frame_width_px": 640
   },
-  "b": {
-    "video": "/mnt/data/workspace/open-video-project/.worktrees/ov-vdn-dmd8/bench/results/../output/1791176734_ov_t2v_00005_.mp4",
+  "a": {
+    "video": "bench/output/1791160306_ov_t2v_00003_.mp4",
     "verdict": "JUDGED",
     "score": 0.9,
     "detail": {
       "score": 0.9,
       "missing_elements": [],
-      "artifacts": "",
+      "artifacts": "Minor scattered specks in the sky in frames 4-5 (likely spray droplets rendered slightly detached), and a small dark dot artifact in the upper sky of frame 5",
       "motion_quality": "good",
       "incoherence": false
     },
     "frames": [
-      "/tmp/judge_frames/480p/f0.jpg",
-      "/tmp/judge_frames/480p/f1.jpg",
-      "/tmp/judge_frames/480p/f2.jpg",
-      "/tmp/judge_frames/480p/f3.jpg",
-      "/tmp/judge_frames/480p/f4.jpg"
+      "bench/output/ab_judge_frames/ab_judge_480p_20261005/a/f0.jpg",
+      "bench/output/ab_judge_frames/ab_judge_480p_20261005/a/f1.jpg",
+      "bench/output/ab_judge_frames/ab_judge_480p_20261005/a/f2.jpg",
+      "bench/output/ab_judge_frames/ab_judge_480p_20261005/a/f3.jpg",
+      "bench/output/ab_judge_frames/ab_judge_480p_20261005/a/f4.jpg"
+    ]
+  },
+  "b": {
+    "video": "bench/output/1791176734_ov_t2v_00005_.mp4",
+    "verdict": "JUDGED",
+    "score": 0.87,
+    "detail": {
+      "score": 0.87,
+      "missing_elements": [],
+      "artifacts": "Minor foam/spray smearing in later frames; water texture slightly repetitive in places",
+      "motion_quality": "good",
+      "incoherence": false
+    },
+    "frames": [
+      "bench/output/ab_judge_frames/ab_judge_480p_20261005/b/f0.jpg",
+      "bench/output/ab_judge_frames/ab_judge_480p_20261005/b/f1.jpg",
+      "bench/output/ab_judge_frames/ab_judge_480p_20261005/b/f2.jpg",
+      "bench/output/ab_judge_frames/ab_judge_480p_20261005/b/f3.jpg",
+      "bench/output/ab_judge_frames/ab_judge_480p_20261005/b/f4.jpg"
     ]
   },
   "summary": {
-    "a_score": 0.92,
-    "b_score": 0.9,
-    "delta_b_minus_a": -0.02,
+    "a_score": 0.9,
+    "b_score": 0.87,
+    "delta_b_minus_a": -0.03,
     "judged": true
   }
 }

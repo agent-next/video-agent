@@ -55,7 +55,7 @@ REPO_URL="${OPEN_VIDEO_REPO:-https://github.com/agent-next/video-agent.git}"
 # lab-restore.sh). Loaded after OV_ROOT is resolved; fallback values keep the
 # standalone curl|bash bootstrap working before the repo exists.
 COMFYUI_REPO_URL="https://github.com/comfyanonymous/ComfyUI.git"
-COMFYUI_COMMIT="14b05228cef127ce529bc0c08660770d4af3e9a8"
+COMFYUI_COMMIT="3c169c2c7de85ccec4582af336a92c469f14df02"
 load_comfyui_pin() {
     # shellcheck disable=SC1091
     [[ -f "$1/scripts/comfyui.pin" ]] && source "$1/scripts/comfyui.pin"

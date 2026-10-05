@@ -75,7 +75,7 @@
     "peak_vram_mb": 31945,
     "peak_ram_mb": 19960,
     "output_size_mb": 2.55,
-    "video_path": "/mnt/data/workspace/open-video-project/.worktrees/ov-vdn-dmd8/bench/output/1791160306_ov_t2v_00003_.mp4",
+    "video_path": "bench/output/1791160306_ov_t2v_00003_.mp4",
     "vram_samples": 133,
     "environment_failures": []
   },
@@ -87,14 +87,15 @@
     "length_frames": 124,
     "status": "ok",
     "wall_s": 627.8,
-    "prompt_executed_s": 198.14,
+    "prompt_executed_s": 625.0,
     "per_step_s": 29.79,
     "steps": 20,
     "peak_vram_mb": 31844,
     "peak_ram_mb": 22037,
     "output_size_mb": 6.04,
-    "video_path": "/mnt/data/workspace/open-video-project/.worktrees/ov-vdn-dmd8/bench/output/1791160935_ov_t2v_00004_.mp4",
+    "video_path": "bench/output/1791160935_ov_t2v_00004_.mp4",
     "vram_samples": 414,
-    "environment_failures": []
+    "environment_failures": [],
+    "prompt_executed_s_correction": "was 198.14 (stale tail-read: this run logs \"Prompt executed in 00:10:25\" and the old decimal-only regex missed it); 625.0 = 00:10:25 parsed from lab server log line 116; parser fixed in bench/profile.py (dual format + per-run offset anchor)"
   }
 }
