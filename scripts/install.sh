@@ -86,11 +86,14 @@ ok()   { printf '  %s✓%s %s\n' "$C_GREEN" "$C_RESET" "$*"; }
 info() { printf '  %s•%s %s\n' "$C_BLUE" "$C_RESET" "$*"; }
 warn() { printf '  %s!%s %s%s%s\n' "$C_YELLOW" "$C_RESET" "$C_YELLOW" "$*" "$C_RESET" >&2; }
 err()  { printf '  %s✗%s %s%s%s\n' "$C_RED" "$C_RESET" "$C_RED" "$*" "$C_RESET" >&2; }
-die()  { err "$*"; err "Aborting. Re-run after fixing the above — progress is saved."; exit 1; }
+die()  { err "$*"; err "Aborting. Re-run after fixing the above — progress is saved."
+         [[ -n "$COMFY_PID" ]] && stop_server_if_ours; exit 1; }
 
 # Ctrl-C / kill: tell the user how to resume instead of a scary traceback.
+COMFY_PID=""
 on_interrupt() {
-    printf '\n'; warn "Interrupted. Re-run $0 to resume — every step is idempotent."; exit 130; }
+    printf '\n'; warn "Interrupted. Re-run $0 to resume — every step is idempotent."
+    [[ -n "$COMFY_PID" ]] && stop_server_if_ours; exit 130; }
 trap on_interrupt INT TERM
 
 have() { command -v "$1" >/dev/null 2>&1; }
@@ -264,7 +267,8 @@ resolve_root() {
     MODELS_DIR="${MODELS_DIR_OVERRIDE:-$COMFYUI_DIR/models}"
     COMFYUI_LOG="$OV_ROOT/.cache/comfyui.log"
     ARIA_LIST="$OV_ROOT/.cache/aria2-h3.list"
-    mkdir -p "$OV_ROOT/.cache" "$OV_ROOT/output"
+    LOG_DIR="$OV_ROOT/.cache/logs"
+    mkdir -p "$OV_ROOT/.cache" "$LOG_DIR" "$OV_ROOT/output"
     ok "open-video root:   $OV_ROOT"
     ok "ComfyUI:           $COMFYUI_DIR"
     ok "venv:              $VENV_DIR"
@@ -370,15 +374,18 @@ detect_platform() {
 install_tools() {
     local tools=("$@")
     [[ -z "$PKG_MGR" ]] && { warn "No supported package manager found — cannot auto-install."; return 1; }
-    if [[ "$EUID" -ne 0 ]]; then
+    local sudo=""
+    if [[ "$PKG_MGR" != brew && "$(id -u)" -ne 0 ]]; then
+        have sudo || { warn "sudo is not available — run as root or install ${tools[*]} yourself."; return 1; }
+        sudo="sudo"
         confirm "Install ${tools[*]} via $PKG_MGR (needs sudo)?" || return 1
     fi
     case "$PKG_MGR" in
-        apt)   sudo apt-get update -y && sudo apt-get install -y "${tools[@]}" ;;
-        dnf)   sudo dnf install -y "${tools[@]}" ;;
-        yum)   sudo yum install -y "${tools[@]}" ;;
-        pacman) sudo pacman -S --noconfirm --needed "${tools[@]}" ;;
-        apk)   sudo apk add --no-cache "${tools[@]}" ;;
+        apt)   $sudo apt-get update -y && $sudo apt-get install -y "${tools[@]}" ;;
+        dnf)   $sudo dnf install -y "${tools[@]}" ;;
+        yum)   $sudo yum install -y "${tools[@]}" ;;
+        pacman) $sudo pacman -S --noconfirm --needed "${tools[@]}" ;;
+        apk)   $sudo apk add --no-cache "${tools[@]}" ;;
         brew)  brew install "${tools[@]}" ;;
         *) warn "Unknown package manager '$PKG_MGR'"; return 1 ;;
     esac
@@ -406,7 +413,12 @@ make_venv() {
     if [[ -x "$VENV_DIR/bin/python" ]]; then
         ok "venv already exists at $VENV_DIR (reusing)"
     else
-        python3 -m venv "$VENV_DIR" || die "venv creation failed at $VENV_DIR"
+        if ! python3 -m venv "$VENV_DIR"; then
+            # Debian/Ubuntu ship venv separately (python3-venv).
+            [[ "$PKG_MGR" == apt ]] && install_tools python3-venv \
+                && python3 -m venv --clear "$VENV_DIR" \
+                || die "venv creation failed at $VENV_DIR (on Debian/Ubuntu: apt-get install python3-venv)"
+        fi
         ok "venv created at $VENV_DIR"
     fi
     VENVPY="$VENV_DIR/bin/python"
@@ -453,9 +465,9 @@ install_engine() {
     fi
 
     info "Installing ComfyUI Python deps (torch + transformers + ...) — this is the largest pip step"
-    if ! "$VENVPY" -m pip install -r "$COMFYUI_DIR/requirements.txt" >/tmp/ov_pip_comfy.log 2>&1; then
-        tail -n 20 /tmp/ov_pip_comfy.log >&2 || true
-        die "pip install of ComfyUI requirements failed (log: /tmp/ov_pip_comfy.log)."
+    if ! "$VENVPY" -m pip install -r "$COMFYUI_DIR/requirements.txt" >$LOG_DIR/pip_comfy.log 2>&1; then
+        tail -n 20 $LOG_DIR/pip_comfy.log >&2 || true
+        die "pip install of ComfyUI requirements failed (log: $LOG_DIR/pip_comfy.log)."
     fi
     ok "ComfyUI deps installed"
     info "torch: $("$VENVPY" -c 'import torch;print(torch.__version__)' 2>/dev/null || echo 'import failed')"
@@ -465,10 +477,10 @@ install_engine() {
     # Non-fatal: if the editable install fails (old setuptools, etc.), we still run
     # fine via `python cli/open_video.py`.
     if [[ -f "$OV_ROOT/pyproject.toml" ]]; then
-        if "$VENVPY" -m pip install -e "$OV_ROOT" >/tmp/ov_pip_ov.log 2>&1; then
+        if "$VENVPY" -m pip install -e "$OV_ROOT" >$LOG_DIR/pip_ov.log 2>&1; then
             ok "open-video installed (editable) — 'open-video' command is on the venv PATH"
         else
-            warn "pip install -e . failed (log: /tmp/ov_pip_ov.log) — falling back to 'python cli/open_video.py'"
+            warn "pip install -e . failed (log: $LOG_DIR/pip_ov.log) — falling back to 'python cli/open_video.py'"
         fi
     elif [[ -f "$OV_ROOT/requirements.txt" ]]; then
         "$VENVPY" -m pip install -r "$OV_ROOT/requirements.txt" \
@@ -479,11 +491,11 @@ install_engine() {
     fi
 
     # Smoke-test the orchestrator + H3 backend import path.
-    if ! ( cd "$OV_ROOT" && "$VENVPY" cli/open_video.py list-models >/tmp/ov_models.log 2>&1 ); then
-        tail -n 20 /tmp/ov_models.log >&2 || true
-        die "open-video self-test failed (could not list models). See /tmp/ov_models.log"
+    if ! ( cd "$OV_ROOT" && "$VENVPY" cli/open_video.py list-models >$LOG_DIR/models.log 2>&1 ); then
+        tail -n 20 $LOG_DIR/models.log >&2 || true
+        die "open-video self-test failed (could not list models). See $LOG_DIR/models.log"
     fi
-    ok "open-video orchestrator OK ($(grep -c -E '^[[:space:]]*h3[[:space:]]' /tmp/ov_models.log 2>/dev/null || echo ?) backend(s) visible)"
+    ok "open-video orchestrator OK ($(grep -c -E '^[[:space:]]*h3[[:space:]]' $LOG_DIR/models.log 2>/dev/null || echo ?) backend(s) visible)"
 }
 
 
@@ -518,7 +530,7 @@ select_quant() {
         args+=(--no-nvidia)
     fi
     local json
-    if ! json=$("$py_bin" "$res_py" "${args[@]}" 2>/tmp/ov_quant_err.log); then
+    if ! json=$("$py_bin" "$res_py" "${args[@]}" 2>$LOG_DIR/quant_err.log); then
         warn "quant probe failed; defaulting to int8 + lowvram"
         QUANT="int8"; USE_LOWVRAM=1
         [[ "${SELF_TEST:-0}" -eq 1 ]] && exit 0
@@ -664,8 +676,6 @@ verify_weights() {
 # ===========================================================================
 # 5. Start ComfyUI
 # ===========================================================================
-COMFY_PID=""
-
 start_server() {
     step "Starting ComfyUI server on http://$HOST:$PORT"
 
@@ -771,11 +781,11 @@ first_generation() {
     # Fast smoke test first: validates orchestrator + ComfyUI wiring, no GPU time.
     info "Smoke test (--dry-run): validates the plan + ComfyUI health without spending GPU."
     if ( cd "$OV_ROOT" && "$VENVPY" cli/open_video.py "$WELCOME_PROMPT" --dry-run \
-            --server "http://$HOST:$PORT" >/tmp/ov_dryrun.log 2>&1 ); then
+            --server "http://$HOST:$PORT" >$LOG_DIR/dryrun.log 2>&1 ); then
         ok "dry-run passed — orchestrator + ComfyUI are wired correctly"
     else
         err "dry-run failed. Last log lines:"
-        tail -n 20 /tmp/ov_dryrun.log >&2 || true
+        tail -n 20 $LOG_DIR/dryrun.log >&2 || true
         stop_server_if_ours
         exit 50
     fi
@@ -797,16 +807,16 @@ first_generation() {
     if ( cd "$OV_ROOT" && "$VENVPY" cli/open_video.py "$WELCOME_PROMPT" \
             --duration "$FIRST_DURATION" --aspect 16:9 \
             --output output/welcome.mp4 --server "http://$HOST:$PORT" \
-            >/tmp/ov_generate.log 2>&1 ); then
+            >$LOG_DIR/generate.log 2>&1 ); then
         local elapsed=$(( $(date +%s) - t0 ))
         if [[ -f "$OV_ROOT/output/welcome.mp4" ]]; then
             ok "FIRST VIDEO GENERATED in ${elapsed}s -> $OV_ROOT/output/welcome.mp4"
         else
-            warn "CLI exited 0 but no file at output/welcome.mp4 (check /tmp/ov_generate.log)"
+            warn "CLI exited 0 but no file at output/welcome.mp4 (check $LOG_DIR/generate.log)"
         fi
     else
         err "Generation failed. Last log lines:"
-        tail -n 30 /tmp/ov_generate.log >&2 || true
+        tail -n 30 $LOG_DIR/generate.log >&2 || true
         err "The stack is up — retry generation with:"
         err "    (cd $OV_ROOT && $VENVPY cli/open_video.py \"$WELCOME_PROMPT\" \\"
         err "        --duration $FIRST_DURATION --server http://$HOST:$PORT)"
