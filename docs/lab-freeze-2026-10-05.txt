@@ -1,0 +1,14 @@
+# Lab freeze 2026-10-05 (pin bump 14b0522 -> 3c169c2c)
+
+- Hardware: NVIDIA RTX 5090 (31GB); driver: 580.95.05
+- ComfyUI: 3c169c2c7de85ccec4582af336a92c469f14df02 (v0.38.0), source sha256-verified
+  (e996ed3e...) before install; previous tree archived at lab/ComfyUI.old-2026-10-03
+- Companion deps: comfy-aimdo==0.5.5, comfy-kitchen==0.2.37 (sha-verified wheels)
+- Python env: lab/venv (--system-site-packages over miniconda3); huggingface_hub 2.x
+  uninstalled (transformers 5.3.0 requires hub<2.0)
+- Custom nodes (runtime-only): comfyui-minimax-h3-audio-T8 (GPL-3.0; 20-module slice,
+  SLICE-MANIFEST.json carries per-file git blob shas) for OpenVDN DMD nodes
+- Server: main.py --listen 127.0.0.1 --port 8188 (no --lowvram, no sage attention)
+- Validation of the bump: fresh default + vdn_dmd8 benches 2026-10-04/05
+  (bench/results/h3-rtx5090-20261004.json, h3-vdn_dmd8-rtx5090-20261005.json) —
+  both profiles render + complete on the new pin.

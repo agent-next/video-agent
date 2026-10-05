@@ -53,7 +53,18 @@ DEFAULT_OUTPUT_DIR = BENCH_DIR / "output"
 
 # ComfyUI server-log regexes (engine-level; model-agnostic). tqdm KSampler lines
 # look like: ` 45%|████▍     | 9/20 [00:42<00:51,  4.69s/it]`
-PROMPT_EXEC_RE = re.compile(r"Prompt executed in ([0-9.]+) seconds")
+PROMPT_EXEC_RE = re.compile(
+    r"Prompt executed in (?:([0-9.]+) seconds|(\d+):(\d{2}):(\d{2}))")  # s | HH:MM:SS
+
+
+def prompt_exec_seconds(m: "re.Match") -> float | None:
+    """Match PROMPT_EXEC_RE -> seconds (ComfyUI switches to HH:MM:SS past ~10 min)."""
+    if m is None:
+        return None
+    if m.group(1) is not None:
+        return float(m.group(1))
+    h, mi, s = int(m.group(2)), int(m.group(3)), int(m.group(4))
+    return h * 3600 + mi * 60 + s
 STEP_RE = re.compile(r"(\d+)/(\d+)\s*\[[0-9:]+<[0-9:]+,\s*([0-9.]+)s/it")
 
 # Short-edge pixel targets for the named resolution presets.
@@ -151,9 +162,19 @@ class ResourceSampler:
             time.sleep(self.interval)
 
 
-def last_log_match(path: str, pattern: re.Pattern):
-    """Last regex match in the ComfyUI server log (reads only the last ~1MB so
-    multi-GB logs stay cheap). Returns the re.Match or None."""
+def log_size(path: str) -> int:
+    """Current byte size of the server log (anchor so a run only ever sees its
+    own lines, never an earlier run's)."""
+    try:
+        return os.path.getsize(path) if path else 0
+    except OSError:
+        return 0
+
+
+def last_log_match(path: str, pattern: re.Pattern, from_offset: int = 0):
+    """Last regex match in the ComfyUI server log at/after ``from_offset``
+    (reads only the last ~1MB so multi-GB logs stay cheap). Returns the
+    re.Match or None."""
     if not path:
         return None
     p = Path(path)
@@ -164,7 +185,8 @@ def last_log_match(path: str, pattern: re.Pattern):
             f.seek(0, 2)
             size = f.tell()
             chunk = min(size, 1 << 20)
-            f.seek(size - chunk)
+            start = max(from_offset, size - chunk)
+            f.seek(start)
             tail = f.read().decode("utf-8", errors="ignore")
     except OSError:
         return None
@@ -239,14 +261,16 @@ def call_generate(backend, req, engine):
 # Single config run
 # =============================================================================#
 def run_config(backend, engine, name, w, h, dur, seed, prompt, mode,
-               server_log, steps_hint, gpu_index, results, receipt_path):
+               server_log, steps_hint, gpu_index, results, receipt_path,
+               profile="default"):
     """Run one generation config, capture metrics, write incremental JSON."""
     from open_video.core.backend import ShotRequest
     req = ShotRequest(prompt=prompt, mode=mode, width=w, height=h,
-                      duration_s=dur, seed=seed)
+                      duration_s=dur, seed=seed, extra={"settings_profile": profile})
 
     sampler = ResourceSampler(gpu_index=gpu_index)
     sampler.start()
+    log_offset = log_size(server_log)
     t0 = time.time()
     result = None
     err = None
@@ -270,11 +294,11 @@ def run_config(backend, engine, name, w, h, dur, seed, prompt, mode,
             except OSError:
                 pass
         # engine-level timings from the ComfyUI server log (optional)
-        pe = last_log_match(server_log, PROMPT_EXEC_RE)
-        prompt_exec_s = float(pe.group(1)) if pe else None
+        pe = last_log_match(server_log, PROMPT_EXEC_RE, from_offset=log_offset)
+        prompt_exec_s = prompt_exec_seconds(pe)
         per_step_s = None
         log_steps = None
-        sm = last_log_match(server_log, STEP_RE)
+        sm = last_log_match(server_log, STEP_RE, from_offset=log_offset)
         if sm:
             per_step_s = float(sm.group(3))
             log_steps = int(sm.group(2))
@@ -398,6 +422,9 @@ def parse_args(argv=None):
                    help="Comma-separated durations in seconds.")
     p.add_argument("--aspect", default="16:9", help="Aspect ratio (default 16:9).")
     p.add_argument("--mode", default="t2v", help="Generation mode (default t2v).")
+    p.add_argument("--profile", default="default",
+                   help="Backend settings profile (default 'default'; e.g. 'vdn_dmd8' for "
+                        "the OpenVDN 8-NFE distilled route when the backend provides it).")
     p.add_argument("--prompt", default=DEFAULT_PROMPT, help="Prompt text (default: cinematic waves).")
     p.add_argument("--seed", type=int, default=101, help="Base seed (seed+i per config).")
     p.add_argument("--warmup", type=int, default=1,
@@ -478,10 +505,16 @@ def main(argv=None) -> int:
     results_dir.mkdir(parents=True, exist_ok=True)
     safe = lambda s: re.sub(r"[^A-Za-z0-9._-]", "-", s)
     date = time.strftime("%Y%m%d")
-    receipt_path = results_dir / f"{safe(args.model)}-{safe(args.gpu)}-{date}.json"
+    profile_tag = f"-{safe(args.profile)}" if args.profile != "default" else ""
+    receipt_path = results_dir / f"{safe(args.model)}{profile_tag}-{safe(args.gpu)}-{date}.json"
     results = json.loads(receipt_path.read_text()) if receipt_path.exists() else {}
 
-    steps_hint = backend.default_settings().get("steps")
+    profiles = backend.settings_profiles() if hasattr(backend, "settings_profiles") else {}
+    if args.profile != "default" and args.profile not in profiles:
+        print(f"[bench] error: backend '{backend.id}' has no settings profile "
+              f"'{args.profile}' (have: {', '.join(profiles) or 'none'})", file=sys.stderr)
+        return 2
+    steps_hint = profiles.get(args.profile, backend.default_settings()).get("steps")
 
     # --- build config matrix --------------------------------------------------
     try:
@@ -504,6 +537,7 @@ def main(argv=None) -> int:
         "aspect": args.aspect,
         "mode": args.mode,
         "prompt": args.prompt,
+        "settings_profile": args.profile,
         "steps_hint": steps_hint,
         "capabilities": {
             "t2v": backend.capabilities.t2v, "i2v": backend.capabilities.i2v,
@@ -513,7 +547,7 @@ def main(argv=None) -> int:
             "max_short_edge_px": backend.capabilities.max_short_edge_px,
         },
         "constraints": backend.constraints(),
-        "settings": backend.default_settings(),
+        "settings": profiles.get(args.profile, backend.default_settings()),
         "timestamp": datetime.now().isoformat(timespec="seconds"),
         "configs": [c[0] for c in cfgs],
     }
@@ -536,7 +570,7 @@ def main(argv=None) -> int:
         for _ in range(args.warmup):
             run_config(backend, engine, warmup_key, ww, wh, wdur, wseed,
                        args.prompt, args.mode, args.server_log, steps_hint,
-                       gpu_index, results, receipt_path)
+                       gpu_index, results, receipt_path, profile=args.profile)
 
     # --- measured matrix (resumable) -----------------------------------------
     for name, w, h, dur, seed in cfgs:
@@ -545,7 +579,8 @@ def main(argv=None) -> int:
             continue
         print(f"[bench] run {name}  {w}x{h}  {dur}s  seed={seed}", flush=True)
         run_config(backend, engine, name, w, h, dur, seed, args.prompt, args.mode,
-                   args.server_log, steps_hint, gpu_index, results, receipt_path)
+                   args.server_log, steps_hint, gpu_index, results, receipt_path,
+                   profile=args.profile)
 
     # --- summary --------------------------------------------------------------
     print_summary(meta, results, warmup_key=warmup_key)

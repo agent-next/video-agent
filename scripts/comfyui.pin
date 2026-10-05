@@ -3,4 +3,4 @@
 # To bump: verify the full commit SHA exists upstream, update here, re-run the
 # lab validation, and refresh docs/lab-freeze-<date>.txt.
 COMFYUI_REPO_URL="https://github.com/comfyanonymous/ComfyUI.git"
-COMFYUI_COMMIT="14b05228cef127ce529bc0c08660770d4af3e9a8"
+COMFYUI_COMMIT="3c169c2c7de85ccec4582af336a92c469f14df02"

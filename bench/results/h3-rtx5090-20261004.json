@@ -1,0 +1,101 @@
+{
+  "_meta": {
+    "model_alias": "h3",
+    "model_id": "minimax-h3",
+    "model_display": "MiniMax H3 (Hailuo 3.0)",
+    "gpu": "rtx5090",
+    "gpu_index": 0,
+    "engine": "comfyui",
+    "engine_server": "http://127.0.0.1:8188",
+    "server_log": "/mnt/data/workspace/open-video-project/lab/logs/comfy_server.log",
+    "aspect": "16:9",
+    "mode": "t2v",
+    "prompt": "A cinematic shot of waves crashing on a rocky shore at sunset, slow motion, detailed, natural light.",
+    "settings_profile": "default",
+    "steps_hint": 20,
+    "capabilities": {
+      "t2v": true,
+      "i2v": true,
+      "flf2v": true,
+      "r2v": false,
+      "native_audio": true,
+      "max_duration_s": 15.0,
+      "max_short_edge_px": 768
+    },
+    "constraints": {
+      "duration_range_s": [
+        4,
+        15
+      ],
+      "frame_grid": "17k+5 @ 24fps",
+      "max_refs": {
+        "images": 9,
+        "videos": 3,
+        "audios": 3,
+        "total": 12
+      },
+      "resolution_multiple": 32,
+      "min_short_edge_px": 384,
+      "audio": "32kHz stereo native",
+      "guidance": "CFG-distilled (no neg prompt/guidance)"
+    },
+    "settings": {
+      "steps": 20,
+      "sampler": "res_multistep",
+      "scheduler": "simple",
+      "shift_video": 12.0,
+      "shift_audio": 3.0,
+      "diffusion_quant": "minimax_h3_fl2va_pruned_int8_convrot.safetensors",
+      "text_encoder_quant": "qwen3vl_32b_minimax_h3_int8_convrot.safetensors",
+      "video_vae": "minimax_h3_video_vae_fp16.safetensors",
+      "audio_vae": "minimax_h3_audio_vae_fp32.safetensors",
+      "engine_flags": "(none) - plain launch on 2026-10-04/05 (server log has no lowvram/sage lines); corrected from a stale backend default",
+      "known_issues": {
+        "NVFP4": "avoid on 5090 (ComfyUI #14157)"
+      },
+      "engine_flags_correction": "was '--lowvram --use-sage-attention' - inherited stale default, not the actual launch; see docs/lab-freeze-2026-10-05.txt"
+    },
+    "timestamp": "2026-10-04T20:28:25",
+    "configs": [
+      "480p_5s",
+      "768p_5s"
+    ]
+  },
+  "480p_5s": {
+    "width": 864,
+    "height": 480,
+    "duration_s": 5.0,
+    "seed": 101,
+    "length_frames": 124,
+    "status": "ok",
+    "wall_s": 201.1,
+    "prompt_executed_s": 198.14,
+    "per_step_s": 8.75,
+    "steps": 20,
+    "peak_vram_mb": 31945,
+    "peak_ram_mb": 19960,
+    "output_size_mb": 2.55,
+    "video_path": "bench/output/1791160306_ov_t2v_00003_.mp4",
+    "vram_samples": 133,
+    "environment_failures": []
+  },
+  "768p_5s": {
+    "width": 1376,
+    "height": 768,
+    "duration_s": 5.0,
+    "seed": 102,
+    "length_frames": 124,
+    "status": "ok",
+    "wall_s": 627.8,
+    "prompt_executed_s": 625.0,
+    "per_step_s": 29.79,
+    "steps": 20,
+    "peak_vram_mb": 31844,
+    "peak_ram_mb": 22037,
+    "output_size_mb": 6.04,
+    "video_path": "bench/output/1791160935_ov_t2v_00004_.mp4",
+    "vram_samples": 414,
+    "environment_failures": [],
+    "prompt_executed_s_correction": "was 198.14 (stale tail-read: this run logs \"Prompt executed in 00:10:25\" and the old decimal-only regex missed it); 625.0 = 00:10:25 parsed from lab server log line 116; parser fixed in bench/profile.py (dual format + per-run offset anchor)"
+  }
+}

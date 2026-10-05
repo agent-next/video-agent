@@ -13,7 +13,8 @@ HERE = Path(__file__).parent
 REPO_ROOT = HERE.parent.parent            # repo root (source) / open_video pkg dir (wheel)
 WORKFLOWS = {"t2v": HERE / "workflows" / "h3_t2v_api.json",
              "i2v": HERE / "workflows" / "h3_flf2v_api.json",
-             "flf2v": HERE / "workflows" / "h3_flf2v_api.json"}
+             "flf2v": HERE / "workflows" / "h3_flf2v_api.json",
+             "t2v_vdn": HERE / "workflows" / "h3_t2v_vdn_api.json"}
 
 
 def resolve_comfy_input() -> Path:
@@ -111,8 +112,35 @@ class H3Backend(ModelBackend):
                 "text_encoder_quant": "qwen3vl_32b_minimax_h3_int8_convrot.safetensors",
                 "video_vae": "minimax_h3_video_vae_fp16.safetensors",
                 "audio_vae": "minimax_h3_audio_vae_fp32.safetensors",
-                "engine_flags": "--lowvram --use-sage-attention",
+                "engine_flags": "(set per host; record actual launch flags in the lab-freeze doc)",
                 "known_issues": {"NVFP4": "avoid on 5090 (ComfyUI #14157)"}}
+
+    def settings_profiles(self) -> dict:
+        """Named settings variants selectable per shot via ``req.extra['settings_profile']``.
+
+        ``vdn_dmd8`` runs the OpenVDN DMD-distilled branch (8 NFE, shifts 12/3 fixed
+        by the execution-plan node) on the same pruned INT8/ConvRot base via the
+        minimax-h3-audio-T8 custom node. ~2.5x fewer steps than default; judge the
+        quality delta before making it a default. No LoRA stacking (VDN owns MODEL).
+        Weights: MiniMax H3 Community License — territory excludes EU/UK/KR/US.
+        """
+        base = self.default_settings()
+        return {
+            "default": base,
+            "vdn_dmd8": {
+                **{k: v for k, v in base.items() if k not in ("steps", "sampler", "scheduler", "known_issues")},
+                "steps": 8,
+                "sampler": "vdn_native_euler (plan node)",
+                "scheduler": "vdn_dmd8_sigma_schedule (plan node)",
+                "shift_video": 12.0, "shift_audio": 3.0,
+                "workflow": "t2v_vdn",
+                "custom_node": "minimax-h3-audio-T8 (GPL-3.0, runtime-only dep)",
+                "weights": "OpenVDN/vdn-minimax-h3 stage_dmd_8nfe (models/diffusion_models/OpenVDN/)",
+                "license_note": "MiniMax H3 Community License: territory excludes EU/UK/KR/US",
+                "modes": ("t2v",),
+                "no_lora_stacking": True,
+            },
+        }
 
     def duration_to_length(self, duration_s: float) -> int:
         return _snap_17k5(duration_s)
@@ -132,17 +160,30 @@ class H3Backend(ModelBackend):
 
     def generate(self, req: ShotRequest, engine=None) -> ShotResult:
         """Build the ComfyUI workflow for this shot, stage any images, run via the engine adapter."""
-        wf_path = WORKFLOWS.get(req.mode)
+        profiles = self.settings_profiles()
+        profile = req.extra.get("settings_profile", "default")
+        if profile not in profiles:
+            return ShotResult(ok=False, error=f"H3 settings profile '{profile}' unknown "
+                              f"(have: {', '.join(profiles)})")
+        s = profiles[profile]
+        wf_key = s.get("workflow", req.mode) if profile != "default" else req.mode
+        if profile != "default" and req.mode not in s.get("modes", (req.mode,)):
+            return ShotResult(ok=False, error=f"H3 profile '{profile}' does not support mode '{req.mode}'")
+        wf_path = WORKFLOWS.get(wf_key)
         if not wf_path:
             return ShotResult(ok=False, error=f"H3 mode '{req.mode}' unsupported")
         wf = json.loads(wf_path.read_text())
-        s = self.default_settings()
         wf["h3_i2v"]["inputs"].update({"prompt": req.prompt, "width": req.width,
                                        "height": req.height, "length": _snap_17k5(req.duration_s)})
         wf["noise"]["inputs"]["noise_seed"] = req.seed
-        wf["sigmashift"]["inputs"].update({"shift_video": s["shift_video"], "shift_audio": s["shift_audio"]})
-        wf["scheduler"]["inputs"]["steps"] = s["steps"]
+        if "sigmashift" in wf:  # VDN plan node fixes shifts itself
+            wf["sigmashift"]["inputs"].update({"shift_video": s["shift_video"], "shift_audio": s["shift_audio"]})
+        if "scheduler" in wf:
+            wf["scheduler"]["inputs"]["steps"] = s["steps"]
         # LoRA support (community fine-tuned style/domain enhancers — the SD-flywheel for video)
+        if req.lora and s.get("no_lora_stacking"):
+            return ShotResult(ok=False, error=f"H3 profile '{profile}' owns MODEL patches; "
+                              "LoRA stacking is not supported (VDN composer contract)")
         if req.lora:
             wf["lora_loader"] = {"class_type": "LoraLoader", "inputs": {
                 "model": ["load_unet", 0], "clip": ["load_clip", 0], "lora_name": req.lora,

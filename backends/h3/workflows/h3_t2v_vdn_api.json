@@ -1,0 +1,113 @@
+{
+  "load_unet": {
+    "class_type": "UNETLoader",
+    "inputs": {
+      "unet_name": "minimax_h3_fl2va_pruned_int8_convrot.safetensors",
+      "weight_dtype": "default"
+    }
+  },
+  "vdn_composer": {
+    "class_type": "MiniMaxH3VDNModelComposerT8Advanced",
+    "inputs": {
+      "model": ["load_unet", 0],
+      "vdn_root": "OpenVDN/vdn-minimax-h3",
+      "stage": "stage_dmd_8nfe",
+      "verify_hashes": true,
+      "allow_structural_base": true
+    }
+  },
+  "load_clip": {
+    "class_type": "CLIPLoader",
+    "inputs": {
+      "clip_name": "qwen3vl_32b_minimax_h3_int8_convrot.safetensors",
+      "type": "minimax",
+      "device": "default"
+    }
+  },
+  "vae_video": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "minimax_h3_video_vae_fp16.safetensors"
+    }
+  },
+  "vae_audio": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "minimax_h3_audio_vae_fp32.safetensors"
+    }
+  },
+  "h3_i2v": {
+    "class_type": "MiniMaxH3AudioConditioningT8",
+    "inputs": {
+      "clip": ["load_clip", 0],
+      "video_vae": ["vae_video", 0],
+      "audio_vae": ["vae_audio", 0],
+      "prompt": "A cinematic shot of waves crashing on a rocky shore at sunset, slow motion, detailed, natural light.",
+      "width": 960,
+      "height": 544,
+      "length": 122,
+      "task_type": "T2VA",
+      "audio_mode": "native",
+      "audio_denoise_strength": 1.0,
+      "add_source_as_reference": false,
+      "prompt_primary_audio_ordinal": 0,
+      "strict_prompt_tags": true,
+      "ref_image_size": "match",
+      "reference_video_policy": "official_2_to_15s"
+    }
+  },
+  "plan": {
+    "class_type": "MiniMaxH3VDNExecutionPlanT8Advanced",
+    "inputs": {
+      "model": ["vdn_composer", 0],
+      "av_latent": ["h3_i2v", 1]
+    }
+  },
+  "guider": {
+    "class_type": "BasicGuider",
+    "inputs": {
+      "model": ["plan", 0],
+      "conditioning": ["h3_i2v", 0]
+    }
+  },
+  "noise": {
+    "class_type": "RandomNoise",
+    "inputs": {
+      "noise_seed": 42
+    }
+  },
+  "sampler": {
+    "class_type": "SamplerCustomAdvanced",
+    "inputs": {
+      "noise": ["noise", 0],
+      "guider": ["guider", 0],
+      "sampler": ["plan", 1],
+      "sigmas": ["plan", 2],
+      "latent_image": ["h3_i2v", 1]
+    }
+  },
+  "decode_av": {
+    "class_type": "MiniMaxH3AVDecodeT8",
+    "inputs": {
+      "av_latent": ["sampler", 0],
+      "video_vae": ["vae_video", 0],
+      "audio_vae": ["vae_audio", 0]
+    }
+  },
+  "create_video": {
+    "class_type": "CreateVideo",
+    "inputs": {
+      "images": ["decode_av", 0],
+      "fps": 24,
+      "audio": ["decode_av", 1]
+    }
+  },
+  "save_video": {
+    "class_type": "SaveVideo",
+    "inputs": {
+      "video": ["create_video", 0],
+      "format": "auto",
+      "codec": "auto"
+    }
+  }
+}
