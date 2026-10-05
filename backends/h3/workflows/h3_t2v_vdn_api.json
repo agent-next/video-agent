@@ -73,8 +73,7 @@
   "noise": {
     "class_type": "RandomNoise",
     "inputs": {
-      "noise_seed": 42,
-      "noise_mode": "fixed"
+      "noise_seed": 42
     }
   },
   "sampler": {
